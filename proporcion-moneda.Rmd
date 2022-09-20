@@ -1,0 +1,103 @@
+---
+title: "Pràctica final"
+author: "Clara Albert"
+date: "11/1/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+set.seed(836)
+moneda=rbinom(100, c(0,1),prob=0.5)
+moneda=as.factor(moneda)
+
+summary(moneda)
+barplot(prop.table(table(moneda)) * 100, col=c("lightblue","darkblue"), main="Frecuencia relativa (%)", ylim=c(0,100))
+```
+
+Queremos estimar una proporción por lo que:
+```{r}
+x=sum(moneda == 0); x
+n=length(moneda); n
+n-x
+```
+
+Y el gráfico de la likelihood:
+```{r}
+calcLikelihoodForProportion <- function(successes, total)
+  {
+     curve(dbinom(successes,total,x)); abline(v=successes/total, col = "blue") # plot the likelihood
+  }
+calcLikelihoodForProportion(x,n)
+```
+Podemos observar que el pico de la función de verosimilitud está aproximadamente en 0.74 que equvale a la media de la muestra (74/100 = 0.74). En otras palabras, la proporción más probable, dado esta muestra, es 0.74.
+
+## Prior Beta(1,1)
+```{r}
+p <- seq(0.5, 0.9, by = 0.01)
+plot(p, dbeta(p, 75, 27), type =
+"l",col="red",main="Distribución posterior de p con Beta(1,1)", ylab="Densidad")
+qbeta(0.025, 75,27); qbeta(0.5, 75,27); qbeta(0.975, 75,27)
+```
+
+
+## Método AR
+```{r}
+log_likelihood = function(p){
+  ll=sum(dbinom(x, size=round(p*100), prob=p, log=T))
+  return(ll)
+}
+
+llmax=log_likelihood(x/n)
+
+nsim=1000 # Number of simulations
+co=0;tot=0
+prob_ar=numeric(nsim)
+
+set.seed(836)
+while(co<nsim){
+ lu=log(runif(1))
+ prob=rbeta(1,75,27)
+ if(lu<=log_likelihood(prob)-llmax){
+ co=co+1
+ prob_ar[co]=prob}
+ tot=tot+1
+}
+efficiency <- nsim/tot; efficiency
+```
+
+```{r}
+hist(prob_ar, probability = TRUE, main = "Distribución posterior de p con AR", ylab="densidad", xlab="p", xlim=c(0.7,0.9))
+lines(density(prob_ar), col='blue')
+```
+
+```{r}
+summary(prob_ar)
+quantile(prob_ar,c(0.025,0.975))
+sd(prob_ar)
+```
+
+## Test de hipotesis
+
+#### Enfoque frecuentista
+```{r}
+binom.test(74,100,p=0.5)
+prop.test(74,100,p=0.5)
+```
+
+#### Enfoque bayesiano
+```{r}
+h = dbinom(74,100,0.5)
+g = (gamma(75)*gamma(27))/gamma(75+27)
+h = 0.5^(74) * 0.5^(26)
+h/(h+g)
+g/(g+h)
+```
+
+
+
+
+
